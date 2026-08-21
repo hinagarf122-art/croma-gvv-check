@@ -237,7 +237,7 @@ td.bad{color:#fca5a5}
         <button class="btn b-primary" style="flex:100%;padding:14px;font-size:14px" onclick="cCopyAllWithBal()">📋 Copy All Gift Cards With Balance &amp; PIN</button>
       </div>
       <div class="row">
-        <button class="btn b-green" onclick="cCopyOnlyBalanceCards()">💰 Copy Only Balance Gift Cards</button>
+        <button class="btn b-green" onclick="cCopyOnlyBalanceCards()">💰 Copy Only Balance Gift Cards (With PIN &amp; Bal)</button>
         <button class="btn b-amber" onclick="cCopyAllCardsOnly()">🎴 Copy All</button>
       </div>
 
@@ -571,7 +571,6 @@ async function cRun(){
 
   let round = 0;
 
-  // Complete retry loop jab tak valid data resolve na ho jaye
   while(true){
     round++;
     const targets = cResults.filter(r => !isResolved(r)).map(r => r.card);
@@ -609,6 +608,8 @@ async function cRun(){
 }
 
 /* ===== COPY OPTIONS ===== */
+
+// Option 1: Copy All (Card + PIN + Balance/Status)
 function cCopyAllWithBal(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   const text = cResults.map(r => {
@@ -618,6 +619,7 @@ function cCopyAllWithBal(){
   doCopy(text, `📋 Copied All ${cResults.length} Cards with Balance & PIN`);
 }
 
+// Option 2: Copy ONLY Balance Cards with PIN & Balance (Card + PIN + Balance)
 function cCopyOnlyBalanceCards(){
   const valid = cResults.filter(r => r.balance && r.balance > 0);
   if(!valid.length){ toast('No cards with positive balance','var(--red)'); return; }
@@ -625,6 +627,7 @@ function cCopyOnlyBalanceCards(){
   doCopy(text, `💰 Copied ${valid.length} Balance Cards with PIN & Balance`);
 }
 
+// Option 3: Copy All (Card + PIN only)
 function cCopyAllCardsOnly(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   const text = cResults.map(r => `${r.card}\t${r.pin || ''}`).join('\n');
