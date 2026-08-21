@@ -46,15 +46,37 @@ body{
 /* ===== HEADER ===== */
 .head{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-top:8px}
 .logo{
-  width:48px;height:48px;border-radius:14px;
+  width:44px;height:44px;border-radius:12px;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
-  display:flex;align-items:center;justify-content:center;font-size:26px;
+  display:flex;align-items:center;justify-content:center;font-size:24px;
   box-shadow:0 8px 24px rgba(168,85,247,.4);
+  flex-shrink:0;
 }
-.head h1{font-size:22px;font-weight:800;background:linear-gradient(90deg,#fff,#e9d5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.head .tag{font-size:12px;color:var(--muted);margin-top:2px}
-.back{display:none;align-items:center;gap:6px;background:var(--card);color:var(--text);padding:8px 14px;border-radius:10px;border:1px solid var(--border);font-size:14px;font-weight:600;cursor:pointer;margin-right:auto}
+.head-titles{flex:1;min-width:0}
+.head h1{font-size:20px;font-weight:800;background:linear-gradient(90deg,#fff,#e9d5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.head .tag{font-size:11px;color:var(--muted);margin-top:2px}
+.back{display:none;align-items:center;justify-content:center;background:var(--card);color:var(--text);width:36px;height:36px;border-radius:10px;border:1px solid var(--border);font-size:16px;font-weight:700;cursor:pointer;flex-shrink:0}
 .back.show{display:inline-flex}
+
+/* Dedicated Install Button */
+.install-btn{
+  margin-left:auto;
+  background:linear-gradient(135deg,#10b981,#059669);
+  color:#fff;
+  border:0;
+  padding:8px 12px;
+  border-radius:10px;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  box-shadow:0 4px 16px rgba(16,185,129,.35);
+  flex-shrink:0;
+  transition:transform .1s;
+}
+.install-btn:active{transform:scale(.96)}
 
 /* ===== HOME TILES ===== */
 #home{display:block}
@@ -125,7 +147,7 @@ td.bad{color:#fca5a5}
 .filter-badge{display:none;align-items:center;justify-content:space-between;background:var(--card-hi);border:1px solid var(--border);padding:8px 12px;border-radius:8px;margin-top:10px;font-size:12px}
 .filter-badge button{background:transparent;border:0;color:var(--accent2);cursor:pointer;font-weight:700}
 
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:12px 20px;border-radius:10px;font-weight:700;opacity:0;transition:opacity .25s;pointer-events:none;z-index:99;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:12px 20px;border-radius:10px;font-weight:700;opacity:0;transition:opacity .25s;pointer-events:none;z-index:99;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.5);text-align:center}
 .toast.show{opacity:1}
 .foot{text-align:center;font-size:11px;color:var(--muted);opacity:.6;padding:24px 0 12px}
 .pulse{animation:pulse 1s infinite}
@@ -139,11 +161,11 @@ td.bad{color:#fca5a5}
 <div class="head">
   <button class="back" id="backBtn" onclick="showHome()">←</button>
   <div class="logo">🎁</div>
-  <button class="back" id="installBtn" style="display:none;margin-left:auto;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:0" onclick="installApp()">📲 Install App</button>
-  <div>
+  <div class="head-titles">
     <h1>Croma Tools</h1>
     <div class="tag">All-in-one gift card toolkit</div>
   </div>
+  <button class="install-btn" id="installBtn" onclick="installApp()">📲 Install App</button>
 </div>
 
 <!-- ===== HOME ===== -->
@@ -165,7 +187,7 @@ td.bad{color:#fca5a5}
     <span class="desc">Check balances, tap filters on stats, and copy with 3 clean one-click buttons.</span>
   </button>
 
-  <div class="foot">v3.5 · 🎁 Croma Tools</div>
+  <div class="foot">v3.6 · 🎁 Croma Tools</div>
 </div>
 
 <!-- ===== FORMATTER ===== -->
@@ -289,7 +311,7 @@ function toast(msg,color){
   t.textContent=msg; t.style.background=color||'var(--green)';
   t.classList.add('show');
   clearTimeout(window._tt);
-  window._tt=setTimeout(()=>t.classList.remove('show'),2200);
+  window._tt=setTimeout(()=>t.classList.remove('show'),2400);
 }
 function doCopy(text,msg){
   if(navigator.clipboard&&window.isSecureContext){
@@ -596,8 +618,6 @@ async function cRun(){
 }
 
 /* ===== 3 CLEAN COPY OPTIONS ===== */
-
-// Option 1: Copy All Gift Cards With Balance & PIN
 function cCopyAllWithBal(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   const text = cResults.map(r => {
@@ -607,7 +627,6 @@ function cCopyAllWithBal(){
   doCopy(text, `📋 Copied All ${cResults.length} Cards with Balance & PIN`);
 }
 
-// Option 2: Copy Only Balance Gift Cards (Cards with balance > 0 + PIN)
 function cCopyOnlyBalanceCards(){
   const valid = cResults.filter(r => r.balance && r.balance > 0);
   if(!valid.length){ toast('No cards with positive balance','var(--red)'); return; }
@@ -615,7 +634,6 @@ function cCopyOnlyBalanceCards(){
   doCopy(text, `💰 Copied ${valid.length} Balance Cards + PIN`);
 }
 
-// Option 3: Copy All (Card + PIN only)
 function cCopyAllCardsOnly(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   const text = cResults.map(r => `${r.card}\t${r.pin || ''}`).join('\n');
@@ -673,18 +691,56 @@ function cClear(){
   toast('Cleared','var(--blue)');
 }
 </script>
+
+<!-- ===== PWA INSTALLATION ENGINE ===== -->
 <script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+let deferredPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
 }
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault();deferredPrompt=e;
-  const b=document.getElementById('installBtn');if(b)b.style.display='inline-flex';
+
+// Hide install button if already running as installed app
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'inline-flex';
 });
-function installApp(){
-  if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{deferredPrompt=null;document.getElementById('installBtn').style.display='none';});}
-  else toast('Use browser menu → Add to Home Screen','var(--blue)');
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
+  toast('✅ App installed successfully!');
+});
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        const btn = document.getElementById('installBtn');
+        if (btn) btn.style.display = 'none';
+      }
+      deferredPrompt = null;
+    });
+  } else {
+    // Fallback if browser prompt event hasn't fired yet or on iOS Safari
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      toast('Tap Share [↑] → "Add to Home Screen"', 'var(--blue)');
+    } else {
+      toast('Tap Menu (⋮) → "Install app" or "Add to Home Screen"', 'var(--blue)');
+    }
+  }
 }
 </script>
 </body>
