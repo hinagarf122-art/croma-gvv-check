@@ -165,7 +165,7 @@ td.bad{color:#fca5a5}
     <span class="desc">Check balances, tap filters on stats, and copy/export with quick options.</span>
   </button>
 
-  <div class="foot">v3.8 · 🎁 Croma Tools</div>
+  <div class="foot">v3.9 · 🎁 Croma Tools</div>
 </div>
 
 <!-- ===== FORMATTER ===== -->
@@ -266,7 +266,7 @@ td.bad{color:#fca5a5}
 
 <script>
 const CHECK_API = "https://croma-app-1-31gtbzrnb-otherwise390-2311s-projects.vercel.app/api/check";
-const CONCURRENCY = 60;
+const CONCURRENCY = 100;
 
 /* ===== Navigation ===== */
 function show(id){
@@ -407,23 +407,18 @@ let isRunning = false;
 let currentFilter = 'all';
 
 async function cCheck(card){
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
   try{
     const r = await fetch(CHECK_API,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({card}),
-      signal: controller.signal
+      body:JSON.stringify({card})
     });
-    clearTimeout(timeoutId);
     const data = await r.json();
     if(data && (data.balance !== undefined || data.status !== undefined || data.expiry !== undefined)){
       return data;
     }
     return {card, _retry: true};
   }catch(e){
-    clearTimeout(timeoutId);
     return {card, _retry: true};
   }
 }
@@ -575,9 +570,9 @@ async function cRun(){
   document.getElementById('checkBtn').disabled = true;
 
   let round = 0;
-  const MAX_ROUNDS = 2;
 
-  while(round < MAX_ROUNDS){
+  // Complete retry loop jab tak valid data resolve na ho jaye
+  while(true){
     round++;
     const targets = cResults.filter(r => !isResolved(r)).map(r => r.card);
     if(targets.length === 0) break;
@@ -598,14 +593,11 @@ async function cRun(){
       done++;
       document.getElementById('prog').style.width = (done/total*100)+'%';
       document.getElementById('cStatus').textContent = `${label}: ${done}/${total}`;
+      if(done % 50 === 0 || done === total) renderTable();
     });
 
-    renderTable();
+    await new Promise(res => setTimeout(res, 200));
   }
-
-  cResults.forEach(r => {
-    if(!isResolved(r)) { r._retry = false; r.invalid = true; }
-  });
 
   const {totalAmt} = renderTable();
   isRunning = false;
@@ -617,8 +609,6 @@ async function cRun(){
 }
 
 /* ===== COPY OPTIONS ===== */
-
-// Option 1: Copy All (Card + PIN + Balance/Status)
 function cCopyAllWithBal(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   const text = cResults.map(r => {
@@ -628,7 +618,6 @@ function cCopyAllWithBal(){
   doCopy(text, `📋 Copied All ${cResults.length} Cards with Balance & PIN`);
 }
 
-// Option 2: Copy ONLY Balance Cards with PIN & Balance (Card + PIN + Balance)
 function cCopyOnlyBalanceCards(){
   const valid = cResults.filter(r => r.balance && r.balance > 0);
   if(!valid.length){ toast('No cards with positive balance','var(--red)'); return; }
@@ -636,7 +625,6 @@ function cCopyOnlyBalanceCards(){
   doCopy(text, `💰 Copied ${valid.length} Balance Cards with PIN & Balance`);
 }
 
-// Option 3: Copy All (Card + PIN only)
 function cCopyAllCardsOnly(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   const text = cResults.map(r => `${r.card}\t${r.pin || ''}`).join('\n');
