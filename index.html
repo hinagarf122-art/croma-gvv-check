@@ -162,10 +162,10 @@ td.bad{color:#fca5a5}
   <button class="tile tile-2" onclick="show('checker')">
     <span class="emoji">💰</span>
     Balance Checker
-    <span class="desc">Check balances, filter results on tap, and copy with 3 clean one-click options!</span>
+    <span class="desc">Check balances, tap filters on stats, and copy/export with quick options.</span>
   </button>
 
-  <div class="foot">v3.4 · 🎁 Croma Tools</div>
+  <div class="foot">v3.5 · 🎁 Croma Tools</div>
 </div>
 
 <!-- ===== FORMATTER ===== -->
@@ -230,8 +230,9 @@ td.bad{color:#fca5a5}
       <button onclick="applyFilter('all')">✕ Reset Filter</button>
     </div>
 
-    <!-- Clean 3 Copy Action Options -->
+    <!-- Actions Section -->
     <div id="cActions" style="display:none;margin-top:12px;flex-direction:column;gap:8px">
+      <!-- Copy Actions -->
       <div class="row">
         <button class="btn b-primary" style="flex:100%;padding:14px;font-size:14px" onclick="cCopyAllWithBal()">📋 Copy All Gift Cards With Balance &amp; PIN</button>
       </div>
@@ -239,8 +240,15 @@ td.bad{color:#fca5a5}
         <button class="btn b-green" onclick="cCopyOnlyBalanceCards()">💰 Copy Only Balance Gift Cards</button>
         <button class="btn b-amber" onclick="cCopyAllCardsOnly()">🎴 Copy All</button>
       </div>
-      <div class="row" style="margin-top:6px">
-        <button class="btn b-purple" onclick="cDownload()">⬇ CSV</button>
+
+      <!-- CSV Download Actions -->
+      <div class="row">
+        <button class="btn b-green" onclick="cDownloadBalancesOnly()">⬇ Download CSV (Only Balance Cards)</button>
+        <button class="btn b-purple" onclick="cDownloadComplete()">⬇ Download Complete CSV</button>
+      </div>
+
+      <!-- Misc Actions -->
+      <div class="row" style="margin-top:4px">
         <button class="btn b-wa" onclick="cShareWA()">📱 WhatsApp</button>
         <button class="btn b-red" onclick="cClear()">🗑 Clear All</button>
       </div>
@@ -595,9 +603,7 @@ async function cRun(){
   toast(`✅ ${cResults.length} cards checked · ₹${totalAmt.toLocaleString('en-IN')} total`);
 }
 
-/* ===== 3 CLEAN COPY OPTIONS ===== */
-
-// Option 1: Copy All Gift Cards With Balance & PIN
+/* ===== COPY OPTIONS ===== */
 function cCopyAllWithBal(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   const text = cResults.map(r => {
@@ -607,7 +613,6 @@ function cCopyAllWithBal(){
   doCopy(text, `📋 Copied All ${cResults.length} Cards with Balance & PIN`);
 }
 
-// Option 2: Copy Only Balance Gift Cards (Cards with balance > 0 + PIN)
 function cCopyOnlyBalanceCards(){
   const valid = cResults.filter(r => r.balance && r.balance > 0);
   if(!valid.length){ toast('No cards with positive balance','var(--red)'); return; }
@@ -615,26 +620,45 @@ function cCopyOnlyBalanceCards(){
   doCopy(text, `💰 Copied ${valid.length} Balance Cards + PIN`);
 }
 
-// Option 3: Copy All (Card + PIN only)
 function cCopyAllCardsOnly(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   const text = cResults.map(r => `${r.card}\t${r.pin || ''}`).join('\n');
   doCopy(text, `🎴 Copied All ${cResults.length} Cards + PIN`);
 }
 
-function cDownload(){
+/* ===== CSV DOWNLOAD OPTIONS ===== */
+
+// 1. Download CSV with Only Positive Balances
+function cDownloadBalancesOnly(){
+  const valid = cResults.filter(r => r.balance && r.balance > 0);
+  if(!valid.length){ toast('No cards with positive balance to download','var(--red)'); return; }
+  let csv = 'Sr No,Gift Card No,PIN,Balance\n';
+  valid.forEach((r, i) => {
+    csv += `${i+1},${r.card},${r.pin || ''},${r.balance}\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'croma_positive_balances.csv';
+  a.click();
+  toast(`⬇ ${valid.length} Balance card(s) CSV downloaded`);
+}
+
+// 2. Download Complete CSV (All checked cards)
+function cDownloadComplete(){
+  if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   let csv = 'Sr No,Gift Card No,PIN,Balance,Status\n';
-  cResults.forEach((r,i)=>{
+  cResults.forEach((r, i) => {
     const bal = r.balance !== undefined ? r.balance : '';
     const stat = r.invalid ? 'Invalid' : (r.balance !== undefined ? 'OK' : 'Error');
     csv += `${i+1},${r.card},${r.pin || ''},${bal},${stat}\n`;
   });
-  const blob = new Blob([csv],{type:'text/csv'});
+  const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'croma_giftcard_balances.csv';
+  a.download = 'croma_complete_cards.csv';
   a.click();
-  toast('CSV downloaded');
+  toast('⬇ Complete CSV downloaded');
 }
 
 function cShareWA(){
