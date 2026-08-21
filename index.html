@@ -113,7 +113,7 @@ td.bad{color:#fca5a5}
 .hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4;opacity:.8}
 #debug{background:var(--bg-soft);border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:10px;font-family:ui-monospace,monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;display:none;color:#fbbf24;max-height:300px;overflow:auto}
 .bar{height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;margin-top:12px;border:1px solid var(--border)}
-.bar>div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0;transition:.2s}
+.bar>div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0;transition:.1s}
 
 /* Stat Filter Boxes */
 .stat{display:flex;gap:6px;margin-top:12px;font-size:11px}
@@ -165,7 +165,7 @@ td.bad{color:#fca5a5}
     <span class="desc">Check balances, tap filters on stats, and copy/export with quick options.</span>
   </button>
 
-  <div class="foot">v3.5 · 🎁 Croma Tools</div>
+  <div class="foot">v3.8 · 🎁 Croma Tools</div>
 </div>
 
 <!-- ===== FORMATTER ===== -->
@@ -266,7 +266,7 @@ td.bad{color:#fca5a5}
 
 <script>
 const CHECK_API = "https://croma-app-1-31gtbzrnb-otherwise390-2311s-projects.vercel.app/api/check";
-const CONCURRENCY = 200;
+const CONCURRENCY = 60;
 
 /* ===== Navigation ===== */
 function show(id){
@@ -407,18 +407,23 @@ let isRunning = false;
 let currentFilter = 'all';
 
 async function cCheck(card){
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
   try{
     const r = await fetch(CHECK_API,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({card})
+      body:JSON.stringify({card}),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
     const data = await r.json();
     if(data && (data.balance !== undefined || data.status !== undefined || data.expiry !== undefined)){
       return data;
     }
     return {card, _retry: true};
   }catch(e){
+    clearTimeout(timeoutId);
     return {card, _retry: true};
   }
 }
@@ -465,7 +470,6 @@ function applyFilter(type){
 
 function renderTable(){
   const tb = document.getElementById('cTb');
-  tb.innerHTML = '';
   let zero=0, nz=0, iv=0, totalAmt=0, pending=0;
 
   cResults.forEach((r)=>{
@@ -482,7 +486,9 @@ function renderTable(){
     }
   });
 
+  const fragment = document.createDocumentFragment();
   let rowIdx = 0;
+
   cResults.forEach((r)=>{
     const isDup = dupSet.has(r.card);
     const invalid = isResolved(r) && (r.status == null && r.expiry == null && r.balance === undefined);
@@ -496,7 +502,7 @@ function renderTable(){
     rowIdx++;
     let cell;
     if(!isResolved(r)){
-      cell = `<td class="bad pulse">🔄 Retrying…</td>`;
+      cell = `<td class="bad pulse">🔄 Checking…</td>`;
     } else if(invalid){
       cell = `<td class="bad">❌ Invalid</td>`;
     } else {
@@ -507,8 +513,11 @@ function renderTable(){
     const dupBadge = isDup ? ` <span style="background:#f59e0b;color:#1c1917;padding:1px 5px;border-radius:6px;font-size:9px;font-weight:800">DUP</span>` : '';
     const pinDisplay = r.pin ? r.pin : '<span style="color:var(--muted)">—</span>';
     tr.innerHTML = `<td>${rowIdx}</td><td>${r.card}${dupBadge}</td><td>${pinDisplay}</td>${cell}`;
-    tb.appendChild(tr);
+    fragment.appendChild(tr);
   });
+
+  tb.innerHTML = '';
+  tb.appendChild(fragment);
 
   document.getElementById('t').textContent = cResults.length;
   document.getElementById('z').textContent = zero;
@@ -566,8 +575,9 @@ async function cRun(){
   document.getElementById('checkBtn').disabled = true;
 
   let round = 0;
+  const MAX_ROUNDS = 2;
 
-  while(true){
+  while(round < MAX_ROUNDS){
     round++;
     const targets = cResults.filter(r => !isResolved(r)).map(r => r.card);
     if(targets.length === 0) break;
@@ -588,11 +598,14 @@ async function cRun(){
       done++;
       document.getElementById('prog').style.width = (done/total*100)+'%';
       document.getElementById('cStatus').textContent = `${label}: ${done}/${total}`;
-      if(done % 40 === 0 || done === total) renderTable();
     });
 
-    await new Promise(res => setTimeout(res, 200));
+    renderTable();
   }
+
+  cResults.forEach(r => {
+    if(!isResolved(r)) { r._retry = false; r.invalid = true; }
+  });
 
   const {totalAmt} = renderTable();
   isRunning = false;
@@ -604,6 +617,8 @@ async function cRun(){
 }
 
 /* ===== COPY OPTIONS ===== */
+
+// Option 1: Copy All (Card + PIN + Balance/Status)
 function cCopyAllWithBal(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   const text = cResults.map(r => {
@@ -613,13 +628,15 @@ function cCopyAllWithBal(){
   doCopy(text, `📋 Copied All ${cResults.length} Cards with Balance & PIN`);
 }
 
+// Option 2: Copy ONLY Balance Cards with PIN & Balance (Card + PIN + Balance)
 function cCopyOnlyBalanceCards(){
   const valid = cResults.filter(r => r.balance && r.balance > 0);
   if(!valid.length){ toast('No cards with positive balance','var(--red)'); return; }
-  const text = valid.map(r => `${r.card}\t${r.pin || ''}`).join('\n');
-  doCopy(text, `💰 Copied ${valid.length} Balance Cards + PIN`);
+  const text = valid.map(r => `${r.card}\t${r.pin || ''}\t₹${r.balance}`).join('\n');
+  doCopy(text, `💰 Copied ${valid.length} Balance Cards with PIN & Balance`);
 }
 
+// Option 3: Copy All (Card + PIN only)
 function cCopyAllCardsOnly(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   const text = cResults.map(r => `${r.card}\t${r.pin || ''}`).join('\n');
@@ -627,8 +644,6 @@ function cCopyAllCardsOnly(){
 }
 
 /* ===== CSV DOWNLOAD OPTIONS ===== */
-
-// 1. Download CSV with Only Positive Balances
 function cDownloadBalancesOnly(){
   const valid = cResults.filter(r => r.balance && r.balance > 0);
   if(!valid.length){ toast('No cards with positive balance to download','var(--red)'); return; }
@@ -644,7 +659,6 @@ function cDownloadBalancesOnly(){
   toast(`⬇ ${valid.length} Balance card(s) CSV downloaded`);
 }
 
-// 2. Download Complete CSV (All checked cards)
 function cDownloadComplete(){
   if(!cResults.length){ toast('No cards checked yet','var(--red)'); return; }
   let csv = 'Sr No,Gift Card No,PIN,Balance,Status\n';
